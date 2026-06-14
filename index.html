@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Local Resume Keyword Highlighter v1</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <div class="topbar" role="region" aria-label="Session controls">
+    <div class="topbar-left">
+      <span class="topbar-label">Session</span>
+      <span id="autosaveStatus" class="autosave-status">Autosaved</span>
+    </div>
+    <div class="topbar-right">
+      <button id="undoBtn" type="button" title="Undo session change (Ctrl/Cmd+Z)">Undo</button>
+      <button id="redoBtn" type="button" title="Redo session change (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)">Redo</button>
+      <button id="saveSessionBtn" type="button">Save session</button>
+      <button id="loadSessionBtn" type="button">Load session</button>
+      <button id="clearAutosaveBtn" type="button">Clear autosave</button>
+      <input id="loadSessionInput" type="file" accept="application/json,.json" hidden />
+    </div>
+  </div>
+
+  <main id="mainLayout">
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Resume text</div>
+          <div class="small-note">Edit directly in the highlighted resume panel.</div>
+        </div>
+        <div class="controls">
+          <label class="checkbox" title="When enabled, keyword matches must be standalone words or phrases, not parts of longer words.">
+            <input type="checkbox" id="wholeWordToggle" checked /> whole words
+          </label>
+          <button id="clearResumeBtn" type="button">Clear resume</button>
+        </div>
+      </div>
+      <div class="resume-editor">
+        <div id="highlightOutput" class="highlight-output placeholder" aria-hidden="true">Paste resume text here...</div>
+        <textarea id="resumeText" placeholder="Paste resume text here..." spellcheck="false" aria-label="Resume text editor"></textarea>
+      </div>
+    </section>
+
+    <div id="splitter" class="splitter" role="separator" aria-orientation="vertical" aria-label="Resize resume and keyword panes"></div>
+
+    <aside class="right-column">
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Keyword occurrences</div>
+            <div class="small-note"><span id="keywordCount">0</span> keywords · <span id="familyCount">0</span> families</div>
+            <div id="familyRecap" class="recap-dots" aria-label="Occurrence totals by family"></div>
+          </div>
+        </div>
+        <div class="stats-toolbar">
+          <input id="keywordSearch" type="search" placeholder="Search/filter keywords..." aria-label="Search or filter keyword occurrences" />
+          <select id="copyFamilySelect" aria-label="Select family to filter occurrence rows and copy missing keywords"></select>
+          <button id="copyMissingBtn" type="button">Copy missing</button>
+        </div>
+        <div id="stats" class="stats"></div>
+      </section>
+
+      <div id="horizontalSplitter" class="horizontal-splitter" role="separator" aria-orientation="horizontal" aria-label="Resize keyword occurrences and keyword families panes"></div>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Keyword families</div>
+            <div class="small-note">One comma-separated list per tab</div>
+          </div>
+          <div class="controls">
+            <button id="addFamilyBtn" type="button">Add tab</button>
+          </div>
+        </div>
+        <div id="keywordTabs" class="keyword-tabs" aria-label="Keyword family tabs"></div>
+        <div class="keyword-family-toolbar">
+          <input id="familyNameInput" type="text" aria-label="Keyword family name" placeholder="Family name" />
+          <button id="clearKeywordsBtn" type="button">Clear tab</button>
+          <button id="deleteFamilyBtn" class="danger" type="button">Delete tab</button>
+        </div>
+        <textarea id="keywordsText" placeholder="project management, stakeholder management, SQL, Python, data analysis"></textarea>
+      </section>
+    </aside>
+  </main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
