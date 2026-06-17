@@ -59,4 +59,18 @@ describe('computeRowsByFamily', () => {
     expect(whole.rows[0].count).toBe(1);
     expect(sub.rows[0].count).toBe(2);
   });
+
+  it('aggregates counts across multiple texts (scope: all)', () => {
+    const fams = [{ id: 1, name: 'Tech', colorIndex: 0, keywords: 'SQL, Rust' }];
+    const [group] = computeRowsByFamily(['SQL here', 'SQL and SQL there'], fams);
+    const counts = Object.fromEntries(group.rows.map((r) => [r.keyword, r.count]));
+    expect(counts).toEqual({ SQL: 3, Rust: 0 });
+  });
+
+  it('treats a single string the same as a one-element array', () => {
+    const fams = [{ id: 1, name: 'A', colorIndex: 0, keywords: 'SQL' }];
+    const [fromString] = computeRowsByFamily('SQL SQL', fams);
+    const [fromArray] = computeRowsByFamily(['SQL SQL'], fams);
+    expect(fromString.rows[0].count).toBe(fromArray.rows[0].count);
+  });
 });
