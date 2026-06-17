@@ -95,7 +95,7 @@ export function initApp() {
     try {
       saveAutosave(buildSessionPayload(currentSessionData(), 'autosave'));
       setAutosaveStatus('Autosaved');
-    } catch (err) {
+    } catch {
       setAutosaveStatus('Autosave unavailable');
     }
   }
@@ -112,12 +112,12 @@ export function initApp() {
   function saveHistoryState() {
     try {
       saveHistory({ undoStack, redoStack });
-    } catch (err) {
+    } catch {
       while (undoStack.length > 10) undoStack.shift();
       redoStack = [];
       try {
         saveHistory({ undoStack, redoStack });
-      } catch (innerErr) {
+      } catch {
         // History is optional. Autosave still works if storage quota is exhausted.
       }
     }
@@ -154,7 +154,7 @@ export function initApp() {
       redoStack = stored.redoStack;
       updateHistoryButtons();
       return undoStack.length > 0;
-    } catch (err) {
+    } catch {
       undoStack = [];
       redoStack = [];
       updateHistoryButtons();
@@ -168,7 +168,7 @@ export function initApp() {
       applyExtractedSession(extractSession(JSON.parse(snapshot)));
       saveAutosaveNow();
       setAutosaveStatus(statusMessage);
-    } catch (err) {
+    } catch {
       setAutosaveStatus('Could not restore history');
     } finally {
       isApplyingHistory = false;
@@ -465,7 +465,7 @@ export function initApp() {
         const payload = JSON.parse(String(reader.result || '{}'));
         applyExtractedSession(extractSession(payload));
         scheduleAutosave();
-      } catch (err) {
+      } catch {
         alert('Could not load this JSON session file.');
       } finally {
         loadSessionInput.value = '';
@@ -481,7 +481,7 @@ export function initApp() {
       redoStack = [];
       updateHistoryButtons();
       setAutosaveStatus('Autosave cleared');
-    } catch (err) {
+    } catch {
       setAutosaveStatus('Could not clear autosave');
     }
   });
@@ -526,7 +526,7 @@ export function initApp() {
       await navigator.clipboard.writeText(output);
       copyMissingBtn.textContent = 'Copied';
       setTimeout(() => (copyMissingBtn.textContent = 'Copy missing'), 1000);
-    } catch (err) {
+    } catch {
       alert('Could not copy to clipboard. Missing keywords:\n\n' + output);
     }
   });
@@ -592,7 +592,7 @@ export function initApp() {
       applyExtractedSession(extractSession(payload));
       setAutosaveStatus('Autosave restored');
       return true;
-    } catch (err) {
+    } catch {
       setAutosaveStatus('Autosave unreadable');
       return false;
     }
