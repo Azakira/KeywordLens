@@ -6,6 +6,7 @@ import {
   HISTORY_KEY,
   buildSessionPayload,
   sanitizeLoadedFamilies,
+  sanitizeLoadedResumes,
   extractSession,
   saveAutosave,
   readAutosave,
@@ -15,8 +16,13 @@ import {
 } from '../src/persistence.js';
 
 const sampleSession = () => ({
-  resumeText: 'I write SQL daily',
   activeFamilyId: 2,
+  resumes: [
+    { id: 1, name: 'Resume 1', text: 'I write SQL daily' },
+    { id: 2, name: 'Backend', text: 'Docker and SQL' },
+  ],
+  activeResumeId: 2,
+  scope: 'all',
   wholeWord: false,
   keywordSearch: 'sql',
   copyFamilySelection: '2',
@@ -39,7 +45,7 @@ describe('buildSessionPayload', () => {
 
   it('carries the session fields through', () => {
     const payload = buildSessionPayload(sampleSession(), 'autosave');
-    expect(payload.resumeText).toBe('I write SQL daily');
+    expect(payload.resumes[0].text).toBe('I write SQL daily');
     expect(payload.families).toHaveLength(2);
   });
 });
@@ -79,7 +85,39 @@ describe('sanitizeLoadedFamilies', () => {
   });
 });
 
+describe('sanitizeLoadedResumes', () => {
+  it('returns null for non-array or empty input', () => {
+    expect(sanitizeLoadedResumes(null)).toBeNull();
+    expect(sanitizeLoadedResumes('nope')).toBeNull();
+    expect(sanitizeLoadedResumes([])).toBeNull();
+  });
+
+  it('keeps an empty-text resume and fills a default name', () => {
+    expect(sanitizeLoadedResumes([{ id: 1, text: '' }])).toEqual([{ id: 1, name: 'Resume 1', text: '' }]);
+  });
+
+  it('coerces field types and fills defaults', () => {
+    expect(sanitizeLoadedResumes([{ id: '5', name: 7, text: 99 }])).toEqual([
+      { id: 5, name: '7', text: '99' },
+    ]);
+  });
+
+  it('reassigns duplicate or invalid ids to be unique', () => {
+    const cleaned = sanitizeLoadedResumes([
+      { id: 1, name: 'A', text: 'x' },
+      { id: 1, name: 'B', text: 'y' },
+    ]);
+    expect(cleaned.map((r) => r.id)).toEqual([1, 2]);
+  });
+});
+
 describe('extractSession', () => {
+  const minimal = (extra = {}) => ({
+    families: [{ id: 1, name: 'A', keywords: 'x' }],
+    resumes: [{ id: 1, name: 'Resume 1', text: '' }],
+    ...extra,
+  });
+
   it('round-trips a built payload back into a session', () => {
     const session = sampleSession();
     const payload = buildSessionPayload(session, 'manual');
@@ -87,32 +125,37 @@ describe('extractSession', () => {
   });
 
   it('throws when there are no valid families', () => {
-    expect(() => extractSession({ families: null })).toThrow();
+    expect(() => extractSession({ families: null, resumes: [{ id: 1, text: '' }] })).toThrow();
   });
 
-  it('falls back to the first family when activeFamilyId is unknown', () => {
-    const session = extractSession({ activeFamilyId: 999, families: [{ id: 7, name: 'A', keywords: 'x' }] });
-    expect(session.activeFamilyId).toBe(7);
+  it('throws when the payload has no resumes so the caller fails safe', () => {
+    expect(() => extractSession({ families: [{ id: 1, name: 'A', keywords: 'x' }] })).toThrow();
+  });
+
+  it('falls back to the first family/resume when the active id is unknown', () => {
+    const session = extractSession(minimal({ activeFamilyId: 999, activeResumeId: 999 }));
+    expect(session.activeFamilyId).toBe(1);
+    expect(session.activeResumeId).toBe(1);
+  });
+
+  it('defaults scope to "active" and honors "all"', () => {
+    expect(extractSession(minimal()).scope).toBe('active');
+    expect(extractSession(minimal({ scope: 'all' })).scope).toBe('all');
+    expect(extractSession(minimal({ scope: 'bogus' })).scope).toBe('active');
   });
 
   it('omits wholeWord when the payload does not specify a boolean', () => {
-    const session = extractSession({ families: [{ id: 1, name: 'A', keywords: 'x' }] });
-    expect(session.wholeWord).toBeUndefined();
+    expect(extractSession(minimal()).wholeWord).toBeUndefined();
   });
 
-  it('defaults copyFamilySelection to "all" and keywordSearch/resumeText to empty', () => {
-    const session = extractSession({ families: [{ id: 1, name: 'A', keywords: 'x' }] });
+  it('defaults copyFamilySelection to "all" and keywordSearch to empty', () => {
+    const session = extractSession(minimal());
     expect(session.copyFamilySelection).toBe('all');
     expect(session.keywordSearch).toBe('');
-    expect(session.resumeText).toBe('');
   });
 
   it('ignores layout values that are not a percentage', () => {
-    const session = extractSession({
-      leftWidth: 'javascript:evil',
-      rightTopHeight: '40%',
-      families: [{ id: 1, name: 'A', keywords: 'x' }],
-    });
+    const session = extractSession(minimal({ leftWidth: 'javascript:evil', rightTopHeight: '40%' }));
     expect(session.leftWidth).toBeUndefined();
     expect(session.rightTopHeight).toBe('40%');
   });

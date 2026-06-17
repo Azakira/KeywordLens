@@ -61,22 +61,56 @@ export function sanitizeLoadedFamilies(inputFamilies) {
   return cleaned;
 }
 
+// Validate/sanitize a resumes array from an untrusted payload. Returns a cleaned
+// array with unique ids (empty-text tabs are kept — a fresh session has one), or
+// null if nothing usable remains.
+export function sanitizeLoadedResumes(inputResumes) {
+  if (!Array.isArray(inputResumes)) return null;
+
+  const cleaned = inputResumes.map((resume, index) => ({
+    id: Number.isFinite(Number(resume.id)) ? Number(resume.id) : index + 1,
+    name: String(resume.name || `Resume ${index + 1}`),
+    text: String(resume.text || ''),
+  }));
+
+  if (!cleaned.length) return null;
+
+  const usedIds = new Set();
+  cleaned.forEach((resume, index) => {
+    if (usedIds.has(resume.id) || resume.id <= 0) resume.id = index + 1;
+    while (usedIds.has(resume.id)) resume.id += 1;
+    usedIds.add(resume.id);
+  });
+
+  return cleaned;
+}
+
 // Turn an untrusted payload into a normalized session object the app can apply.
-// Throws if there are no valid families (the caller fails safe to defaults).
-// Optional fields (wholeWord, leftWidth, rightTopHeight) are present only when the
-// payload carries a usable value, so callers can keep current state otherwise.
+// Throws if there are no valid families or no valid resumes, so the caller can
+// fail safe to defaults rather than apply a malformed session. Optional fields
+// (wholeWord, leftWidth, rightTopHeight) are present only when the payload carries
+// a usable value, so callers can keep current state otherwise.
 export function extractSession(payload) {
   const families = sanitizeLoadedFamilies(payload.families);
   if (!families) throw new Error('No valid keyword families found.');
+
+  const resumes = sanitizeLoadedResumes(payload.resumes);
+  if (!resumes) throw new Error('No valid resume tabs found.');
 
   const activeFamilyId = families.some((family) => family.id === Number(payload.activeFamilyId))
     ? Number(payload.activeFamilyId)
     : families[0].id;
 
+  const activeResumeId = resumes.some((resume) => resume.id === Number(payload.activeResumeId))
+    ? Number(payload.activeResumeId)
+    : resumes[0].id;
+
   const session = {
     families,
     activeFamilyId,
-    resumeText: String(payload.resumeText || ''),
+    resumes,
+    activeResumeId,
+    scope: payload.scope === 'all' ? 'all' : 'active',
     keywordSearch: String(payload.keywordSearch || ''),
     copyFamilySelection: payload.copyFamilySelection ? String(payload.copyFamilySelection) : 'all',
   };
