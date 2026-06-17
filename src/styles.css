@@ -137,6 +137,133 @@
       background: #ffffff;
     }
 
+    /* Chrome/Brave-style resume tab strip (replaces the old panel header). */
+    .resume-tabbar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 8px;
+      background: #ececec;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .resume-tabs {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .resume-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      max-width: 170px;
+      margin: 0;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 6px 8px 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .resume-tab:hover {
+      background: rgba(0, 0, 0, 0.06);
+      color: var(--text);
+    }
+
+    .resume-tab.active {
+      background: var(--panel);
+      color: var(--text);
+      font-weight: 600;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+    }
+
+    .resume-tab-edit {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      border-radius: 4px;
+      cursor: pointer;
+      visibility: hidden;
+    }
+
+    .resume-tab:hover .resume-tab-edit {
+      visibility: visible;
+    }
+
+    .resume-tab-edit:hover {
+      color: var(--text);
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .resume-tab-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .resume-tab-rename {
+      width: 96px;
+      border: 1px solid #777;
+      border-radius: 4px;
+      padding: 1px 4px;
+      font-size: 12px;
+      font-family: inherit;
+    }
+
+    .resume-tab-close {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      font-size: 14px;
+      line-height: 1;
+      color: var(--muted);
+      visibility: hidden;
+    }
+
+    .resume-tab:hover .resume-tab-close,
+    .resume-tab.active .resume-tab-close {
+      visibility: visible;
+    }
+
+    .resume-tab-close:hover {
+      background: rgba(0, 0, 0, 0.14);
+      color: var(--text);
+    }
+
+    .resume-add {
+      flex: none;
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .resume-add:hover {
+      background: rgba(0, 0, 0, 0.08);
+      color: var(--text);
+    }
+
+    .resume-clear {
+      margin-left: auto;
+    }
+
     .resume-editor {
       position: relative;
       flex: 1;
@@ -239,7 +366,7 @@
 
     .stats-toolbar {
       display: grid;
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: auto auto 1fr auto auto;
       gap: 8px;
       align-items: center;
       padding: 8px;
@@ -256,7 +383,8 @@
       outline: none;
     }
 
-    #copyFamilySelect {
+    #copyFamilySelect,
+    #scopeSelect {
       max-width: 130px;
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -449,6 +577,7 @@
       color: var(--muted);
       font-size: 12px;
       user-select: none;
+      white-space: nowrap;
     }
 
     .empty-state {

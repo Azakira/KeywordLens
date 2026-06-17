@@ -24,17 +24,10 @@
 
   <main id="mainLayout">
     <section class="panel">
-      <div class="panel-header">
-        <div>
-          <div class="panel-title">Resume text</div>
-          <div class="small-note">Edit directly in the highlighted resume panel.</div>
-        </div>
-        <div class="controls">
-          <label class="checkbox" title="When enabled, keyword matches must be standalone words or phrases, not parts of longer words.">
-            <input type="checkbox" id="wholeWordToggle" checked /> whole words
-          </label>
-          <button id="clearResumeBtn" type="button">Clear resume</button>
-        </div>
+      <div class="resume-tabbar">
+        <div id="resumeTabs" class="resume-tabs" role="tablist" aria-label="Resume tabs"></div>
+        <button id="addResumeBtn" class="resume-add" type="button" title="Add resume" aria-label="Add resume">+</button>
+        <button id="clearResumeBtn" class="resume-clear" type="button">Clear resume</button>
       </div>
       <div class="resume-editor">
         <div id="highlightOutput" class="highlight-output placeholder" aria-hidden="true">Paste resume text here...</div>
@@ -54,6 +47,13 @@
           </div>
         </div>
         <div class="stats-toolbar">
+          <label class="checkbox" title="When enabled, keyword matches must be standalone words or phrases, not parts of longer words.">
+            <input type="checkbox" id="wholeWordToggle" checked /> whole words
+          </label>
+          <select id="scopeSelect" aria-label="Count keyword occurrences against this resume or all resumes">
+            <option value="active">This resume</option>
+            <option value="all">All resumes</option>
+          </select>
           <input id="keywordSearch" type="search" placeholder="Search/filter keywords..." aria-label="Search or filter keyword occurrences" />
           <select id="copyFamilySelect" aria-label="Select family to filter occurrence rows and copy missing keywords"></select>
           <button id="copyMissingBtn" type="button">Copy missing</button>
