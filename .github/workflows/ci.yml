@@ -1,0 +1,29 @@
+name: CI
+
+# Lint, test (with coverage thresholds), and build on every push and PR.
+# Fail-fast: any step failing stops the job.
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test + coverage
+        run: npm run coverage
+
+      - name: Build single-file artifact
+        run: npm run build
