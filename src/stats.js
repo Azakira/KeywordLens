@@ -12,13 +12,20 @@ export function countOccurrences(text, keyword, { wholeWord = false } = {}) {
 
 // For each non-empty family, the per-keyword counts, sorted most-present first
 // (ties broken alphabetically). Families with no keywords are dropped.
+//
+// `text` may be a single string (scope: active resume) or an array of strings
+// (scope: all resume tabs), in which case counts are summed across every text.
 export function computeRowsByFamily(text, families, { wholeWord = false } = {}) {
+  const texts = Array.isArray(text) ? text : [text];
+  const countAcross = (keyword) =>
+    texts.reduce((sum, single) => sum + countOccurrences(single, keyword, { wholeWord }), 0);
+
   return families
     .map((family) => {
       const rows = parseKeywords(family.keywords)
         .map((keyword) => ({
           keyword,
-          count: countOccurrences(text, keyword, { wholeWord }),
+          count: countAcross(keyword),
         }))
         .sort((a, b) => {
           if (b.count !== a.count) return b.count - a.count;

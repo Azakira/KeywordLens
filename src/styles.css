@@ -137,6 +137,143 @@
       background: #ffffff;
     }
 
+    /* Chrome/Brave-style resume tab strip (replaces the old panel header). */
+    .resume-tabbar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 8px;
+      background: #ececec;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .resume-tabs {
+      display: flex;
+      align-items: center;
+      /* No gap between tabs: gaps are dead zones that aren't `cursor: pointer`, so
+         sweeping across them flickers the cursor. Tabs touch and separate visually
+         via their own padding instead. */
+      flex: 1 1 auto;
+      min-width: 0;
+      /* Scroll horizontally when the tabs outgrow the strip instead of squishing
+         them; the + button stays pinned to the right (it lives outside this box).
+         The scrollbar itself is hidden — the tabs still scroll via wheel/trackpad. */
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .resume-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .resume-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex: none;
+      max-width: 170px;
+      margin: 0;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 6px 8px 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .resume-tab:hover {
+      background: rgba(0, 0, 0, 0.06);
+      color: var(--text);
+    }
+
+    .resume-tab.active {
+      background: var(--panel);
+      color: var(--text);
+      font-weight: 600;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+    }
+
+    .resume-tab-edit {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      border-radius: 4px;
+      cursor: pointer;
+      visibility: hidden;
+    }
+
+    .resume-tab:hover .resume-tab-edit {
+      visibility: visible;
+    }
+
+    .resume-tab-edit:hover {
+      color: var(--text);
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .resume-tab-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .resume-tab-rename {
+      width: 96px;
+      border: 1px solid #777;
+      border-radius: 4px;
+      padding: 1px 4px;
+      font-size: 12px;
+      font-family: inherit;
+    }
+
+    .resume-tab-close {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      font-size: 14px;
+      line-height: 1;
+      color: var(--muted);
+      visibility: hidden;
+    }
+
+    .resume-tab:hover .resume-tab-close,
+    .resume-tab.active .resume-tab-close {
+      visibility: visible;
+    }
+
+    .resume-tab-close:hover {
+      background: rgba(0, 0, 0, 0.14);
+      color: var(--text);
+    }
+
+    .resume-add {
+      flex: none;
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .resume-add:hover {
+      background: rgba(0, 0, 0, 0.08);
+      color: var(--text);
+    }
+
     .resume-editor {
       position: relative;
       flex: 1;
@@ -160,6 +297,11 @@
       white-space: pre-wrap;
       word-break: break-word;
       overflow: auto;
+      /* Reserve the same scrollbar gutter on both layers so they wrap into the
+         same lines. Without this, classic (width-consuming) scrollbars shrink
+         only the textarea's content box, so the overlay wraps differently and
+         the 1:1 scrollTop sync drifts as you scroll. */
+      scrollbar-gutter: stable;
     }
 
     #resumeText {
@@ -187,8 +329,6 @@
     .highlight-output.placeholder {
       color: var(--muted);
     }
-
-    .highlight-output::-webkit-scrollbar { width: 0; height: 0; }
 
     mark {
       border-radius: 3px;
@@ -236,7 +376,7 @@
 
     .stats-toolbar {
       display: grid;
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: auto auto 1fr auto auto;
       gap: 8px;
       align-items: center;
       padding: 8px;
@@ -253,7 +393,8 @@
       outline: none;
     }
 
-    #copyFamilySelect {
+    #copyFamilySelect,
+    #scopeSelect {
       max-width: 130px;
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -446,6 +587,7 @@
       color: var(--muted);
       font-size: 12px;
       user-select: none;
+      white-space: nowrap;
     }
 
     .empty-state {

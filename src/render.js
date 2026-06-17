@@ -3,12 +3,14 @@
 // delegated to the pure modules; this layer is the only one that touches the DOM.
 //
 // State ownership split:
-//   - model + settings (families, activeFamilyId, resumeText, wholeWord,
-//     keywordSearch, copyFamilySelection) live in `state`; render() is subscribed
-//     and repaints on every mutation.
+//   - model + settings (families, activeFamilyId, resumes, activeResumeId, scope,
+//     wholeWord, keywordSearch, copyFamilySelection) live in `state`; render() is
+//     subscribed and repaints on every mutation.
 //   - layout dimensions live as CSS custom properties, read back at save time.
 //   - the keyword-search input and copy-family <select> are seeded from state on
 //     load and read back from state/DOM during render (never reset mid-typing).
+//   - the resume textarea and the resume/family name inputs are likewise seeded
+//     on load and on tab switch only, so render() never fights the caret.
 
 import { escapeHtml, getAllKeywordEntries, highlightText, parseKeywords } from './highlight.js';
 import { countOccurrences, computeRowsByFamily } from './stats.js';
@@ -24,6 +26,10 @@ import {
 } from './persistence.js';
 import { createState } from './state.js';
 
+// Inline, monochrome pencil glyph for the per-tab rename control.
+const PEN_ICON =
+  '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+
 export function initApp() {
   const mainLayout = document.getElementById('mainLayout');
   const splitter = document.getElementById('splitter');
@@ -37,8 +43,10 @@ export function initApp() {
   const familyRecap = document.getElementById('familyRecap');
   const keywordSearch = document.getElementById('keywordSearch');
   const copyFamilySelect = document.getElementById('copyFamilySelect');
+  const scopeSelect = document.getElementById('scopeSelect');
   const wholeWordToggle = document.getElementById('wholeWordToggle');
-  const clearResumeBtn = document.getElementById('clearResumeBtn');
+  const resumeTabs = document.getElementById('resumeTabs');
+  const addResumeBtn = document.getElementById('addResumeBtn');
   const clearKeywordsBtn = document.getElementById('clearKeywordsBtn');
   const copyMissingBtn = document.getElementById('copyMissingBtn');
   const keywordTabs = document.getElementById('keywordTabs');
@@ -72,7 +80,9 @@ export function initApp() {
   function currentSessionData() {
     const s = store.getState();
     return {
-      resumeText: s.resumeText,
+      resumes: s.resumes,
+      activeResumeId: s.activeResumeId,
+      scope: s.scope,
       activeFamilyId: s.activeFamilyId,
       wholeWord: s.wholeWord,
       keywordSearch: s.keywordSearch,
@@ -217,6 +227,74 @@ export function initApp() {
     deleteFamilyBtn.disabled = s.families.length <= 1;
   }
 
+  // Chrome/Brave-style tab strip: the active tab is a floating pill. A pen icon
+  // (shown on hover) renames the tab; the × close (delete) only appears when more
+  // than one tab exists, since the last tab cannot be removed.
+  function renderResumeTabs(s) {
+    const multiple = s.resumes.length > 1;
+    resumeTabs.innerHTML = s.resumes
+      .map((resume) => {
+        const active = resume.id === s.activeResumeId;
+        const close = multiple
+          ? `<span class="resume-tab-close" data-close-id="${resume.id}" role="button" tabindex="-1" aria-label="Delete resume" title="Delete resume">×</span>`
+          : '';
+        return `
+        <button class="resume-tab ${active ? 'active' : ''}" type="button" role="tab" aria-selected="${active}" data-resume-id="${resume.id}">
+          <span class="resume-tab-edit" data-edit-id="${resume.id}" role="button" tabindex="-1" aria-label="Rename resume" title="Rename resume">${PEN_ICON}</span>
+          <span class="resume-tab-name">${escapeHtml(resume.name || 'Untitled')}</span>
+          ${close}
+        </button>`;
+      })
+      .join('');
+  }
+
+  // Seed the resume textarea from the active tab. Like the family editor, this
+  // runs on load and on tab switch only, never from render(), so it never fights
+  // the caret while typing.
+  function renderResumeEditor() {
+    resumeText.value = store.getActiveResume().text;
+  }
+
+  // Swap the whole tab for an inline input; commit on Enter/blur, cancel on Escape.
+  // The tab is a <button>, so the input replaces it rather than nesting inside it —
+  // otherwise the button would swallow Space (and other keys) as activation, ending
+  // the rename. renameResume notifies, so render() rebuilds the strip with the new
+  // name. Renaming does not activate the tab, so a tab can be renamed without
+  // leaving the one you are editing.
+  function startResumeRename(tab, id) {
+    const nameEl = tab.querySelector('.resume-tab-name');
+    if (!nameEl) return;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'resume-tab-rename';
+    input.value = nameEl.textContent;
+    tab.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let settled = false;
+    const finish = (save) => {
+      if (settled) return;
+      settled = true;
+      if (save) {
+        store.renameResume(id, input.value);
+        scheduleAutosave();
+      } else {
+        renderResumeTabs(store.getState());
+      }
+    };
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        finish(true);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        finish(false);
+      }
+    });
+    input.addEventListener('blur', () => finish(true));
+  }
+
   function renderCopySelector(s) {
     const desired = s.copyFamilySelection || 'all';
     copyFamilySelect.innerHTML = [
@@ -312,16 +390,25 @@ export function initApp() {
     keywordCount.textContent = entries.length;
     familyCount.textContent = s.families.length;
 
-    const rowsByFamily = computeRowsByFamily(s.resumeText, s.families, { wholeWord: s.wholeWord });
+    // Counts/present-missing follow the scope: the active resume only, or every
+    // resume aggregated. Highlighting always reflects the active resume.
+    const activeText = store.getActiveResume().text;
+    const scopedTexts = s.scope === 'all' ? s.resumes.map((resume) => resume.text) : [activeText];
+    const rowsByFamily = computeRowsByFamily(scopedTexts, s.families, { wholeWord: s.wholeWord });
 
     renderTabs(s);
+    renderResumeTabs(s);
     renderCopySelector(s);
     renderFamilyRecap(rowsByFamily);
     renderStats(rowsByFamily, s);
 
-    const highlighted = highlightText(s.resumeText, entries, { wholeWord: s.wholeWord });
-    highlightOutput.classList.toggle('placeholder', !s.resumeText);
-    highlightOutput.innerHTML = highlighted || 'Paste resume text here...';
+    const highlighted = highlightText(activeText, entries, { wholeWord: s.wholeWord });
+    highlightOutput.classList.toggle('placeholder', !activeText);
+    // A textarea renders an extra empty line for a trailing newline (caret room),
+    // but a pre-wrap div drops that final line box — leaving the overlay one line
+    // short and the highlights misaligned at the very bottom. Pad to match.
+    const trailingPad = activeText.endsWith('\n') ? '\n' : '';
+    highlightOutput.innerHTML = highlighted ? highlighted + trailingPad : 'Paste resume text here...';
     syncResumeScroll();
   }
 
@@ -335,9 +422,10 @@ export function initApp() {
   function applyExtractedSession(session) {
     store.replaceSession(session); // updates model + triggers render via subscription
     const s = store.getState();
-    resumeText.value = s.resumeText;
     wholeWordToggle.checked = s.wholeWord;
     keywordSearch.value = s.keywordSearch;
+    scopeSelect.value = s.scope;
+    renderResumeEditor();
     renderFamilyEditor(s);
 
     if (session.copyFamilySelection) {
@@ -378,6 +466,41 @@ export function initApp() {
   copyFamilySelect.addEventListener('change', () => {
     store.setCopyFamilySelection(copyFamilySelect.value);
     scheduleAutosave();
+  });
+
+  scopeSelect.addEventListener('change', () => {
+    store.setScope(scopeSelect.value);
+    scheduleAutosave();
+  });
+
+  resumeTabs.addEventListener('click', (event) => {
+    const editEl = event.target.closest('.resume-tab-edit');
+    if (editEl) {
+      const tab = editEl.closest('[data-resume-id]');
+      startResumeRename(tab, Number(editEl.dataset.editId));
+      return;
+    }
+    const closeEl = event.target.closest('.resume-tab-close');
+    if (closeEl) {
+      if (store.deleteResume(Number(closeEl.dataset.closeId))) {
+        renderResumeEditor();
+        scheduleAutosave();
+      }
+      return;
+    }
+    const tab = event.target.closest('[data-resume-id]');
+    if (!tab) return;
+    store.setActiveResume(Number(tab.dataset.resumeId));
+    renderResumeEditor();
+    scheduleAutosave();
+    resumeText.focus();
+  });
+
+  addResumeBtn.addEventListener('click', () => {
+    store.addResume();
+    renderResumeEditor();
+    scheduleAutosave();
+    resumeText.focus();
   });
 
   keywordsText.addEventListener('input', () => {
@@ -486,13 +609,6 @@ export function initApp() {
     }
   });
 
-  clearResumeBtn.addEventListener('click', () => {
-    resumeText.value = '';
-    store.setResumeText('');
-    scheduleAutosave();
-    resumeText.focus();
-  });
-
   clearKeywordsBtn.addEventListener('click', () => {
     store.setActiveFamilyKeywords('');
     renderFamilyEditor(store.getState());
@@ -502,15 +618,17 @@ export function initApp() {
 
   copyMissingBtn.addEventListener('click', async () => {
     const s = store.getState();
-    const text = s.resumeText;
+    // A keyword is missing under the current scope when it appears in none of the
+    // scoped resumes (the active resume only, or every resume aggregated).
+    const texts = s.scope === 'all' ? s.resumes.map((resume) => resume.text) : [store.getActiveResume().text];
     const selected = copyFamilySelect.value;
     const selectedFamilies =
       selected === 'all' ? s.families : s.families.filter((family) => String(family.id) === selected);
 
     const missingByFamily = selectedFamilies
       .map((family) => {
-        const missing = parseKeywords(family.keywords).filter(
-          (keyword) => countOccurrences(text, keyword, { wholeWord: s.wholeWord }) === 0
+        const missing = parseKeywords(family.keywords).filter((keyword) =>
+          texts.every((text) => countOccurrences(text, keyword, { wholeWord: s.wholeWord }) === 0)
         );
         return { familyName: family.name, missing };
       })
@@ -599,6 +717,7 @@ export function initApp() {
   }
 
   if (!loadAutosaveIfPresent()) {
+    renderResumeEditor();
     renderFamilyEditor(store.getState());
     render();
     saveAutosaveNow();
