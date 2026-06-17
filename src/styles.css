@@ -160,6 +160,11 @@
       white-space: pre-wrap;
       word-break: break-word;
       overflow: auto;
+      /* Reserve the same scrollbar gutter on both layers so they wrap into the
+         same lines. Without this, classic (width-consuming) scrollbars shrink
+         only the textarea's content box, so the overlay wraps differently and
+         the 1:1 scrollTop sync drifts as you scroll. */
+      scrollbar-gutter: stable;
     }
 
     #resumeText {
@@ -187,8 +192,6 @@
     .highlight-output.placeholder {
       color: var(--muted);
     }
-
-    .highlight-output::-webkit-scrollbar { width: 0; height: 0; }
 
     mark {
       border-radius: 3px;
