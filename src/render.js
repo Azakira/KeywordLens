@@ -47,7 +47,6 @@ export function initApp() {
   const wholeWordToggle = document.getElementById('wholeWordToggle');
   const resumeTabs = document.getElementById('resumeTabs');
   const addResumeBtn = document.getElementById('addResumeBtn');
-  const clearResumeBtn = document.getElementById('clearResumeBtn');
   const clearKeywordsBtn = document.getElementById('clearKeywordsBtn');
   const copyMissingBtn = document.getElementById('copyMissingBtn');
   const keywordTabs = document.getElementById('keywordTabs');
@@ -608,13 +607,6 @@ export function initApp() {
     } catch {
       setAutosaveStatus('Could not clear autosave');
     }
-  });
-
-  clearResumeBtn.addEventListener('click', () => {
-    resumeText.value = '';
-    store.setResumeText('');
-    scheduleAutosave();
-    resumeText.focus();
   });
 
   clearKeywordsBtn.addEventListener('click', () => {

@@ -150,15 +150,29 @@
     .resume-tabs {
       display: flex;
       align-items: center;
-      gap: 2px;
+      /* No gap between tabs: gaps are dead zones that aren't `cursor: pointer`, so
+         sweeping across them flickers the cursor. Tabs touch and separate visually
+         via their own padding instead. */
+      flex: 1 1 auto;
       min-width: 0;
-      overflow: hidden;
+      /* Scroll horizontally when the tabs outgrow the strip instead of squishing
+         them; the + button stays pinned to the right (it lives outside this box).
+         The scrollbar itself is hidden — the tabs still scroll via wheel/trackpad. */
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .resume-tabs::-webkit-scrollbar {
+      display: none;
     }
 
     .resume-tab {
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      flex: none;
       max-width: 170px;
       margin: 0;
       border: 0;
@@ -258,10 +272,6 @@
     .resume-add:hover {
       background: rgba(0, 0, 0, 0.08);
       color: var(--text);
-    }
-
-    .resume-clear {
-      margin-left: auto;
     }
 
     .resume-editor {
