@@ -47,6 +47,12 @@ jobs:
         with:
           path: dist
 
+      # Hand the single-file build to the release job (no rebuild needed).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: single-file-build
+          path: dist/index.html
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -56,3 +62,48 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Publish the offline single-file build as a downloadable asset on a rolling
+  # "latest" release, so anyone can grab it without logging into GitHub:
+  #   https://github.com/<owner>/<repo>/releases/latest/download/keywordlens.html
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # create the release
+      id-token: write       # OIDC token for keyless Sigstore signing
+      attestations: write   # store the build-provenance attestation
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: single-file-build
+
+      - name: Name the download
+        run: mv index.html keywordlens.html
+
+      # Keyless (Sigstore) provenance: cryptographically ties keywordlens.html to
+      # this workflow run + commit. Verify with:
+      #   gh attestation verify keywordlens.html --repo <owner>/<repo>
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: keywordlens.html
+
+      - name: Generate SHA-256 checksum
+        run: sha256sum keywordlens.html > keywordlens.html.sha256
+
+      - name: Publish rolling "latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
+          gh release create latest keywordlens.html keywordlens.html.sha256 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Latest build" \
+            --notes "Single-file, fully offline build of KeywordLens. Download \`keywordlens.html\` and open it in any browser — no install, no network.
+
+          **Verify the download:**
+          - Authenticity (build provenance): \`gh attestation verify keywordlens.html --repo $GITHUB_REPOSITORY\`
+          - Integrity (checksum): \`sha256sum -c keywordlens.html.sha256\`" \
+            --latest

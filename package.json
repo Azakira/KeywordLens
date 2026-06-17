@@ -1,6 +1,6 @@
 {
   "name": "keywordlens",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "Local, offline resume keyword highlighter — single self-contained HTML build.",
